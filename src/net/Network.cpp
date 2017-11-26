@@ -43,11 +43,9 @@
 #include "Platform.h"
 #include "workers/Workers.h"
 
-
 Network::Network(const Options *options) :
-    m_options(options),
-    m_donate(nullptr)
-{
+m_options(options),
+m_donate(nullptr) {
     srand(time(0) ^ (uintptr_t) this);
 
     Workers::setListener(this);
@@ -56,8 +54,7 @@ Network::Network(const Options *options) :
 
     if (pools.size() > 1) {
         m_strategy = new FailoverStrategy(pools, Platform::userAgent(), this);
-    }
-    else {
+    } else {
         m_strategy = new SinglePoolStrategy(pools.front(), Platform::userAgent(), this);
     }
 
@@ -71,20 +68,14 @@ Network::Network(const Options *options) :
     uv_timer_start(&m_timer, Network::onTick, kTickInterval, kTickInterval);
 }
 
-
-Network::~Network()
-{
+Network::~Network() {
 }
 
-
-void Network::connect()
-{
+void Network::connect() {
     m_strategy->connect();
 }
 
-
-void Network::stop()
-{
+void Network::stop() {
     if (m_donate) {
         m_donate->stop();
     }
@@ -92,9 +83,7 @@ void Network::stop()
     m_strategy->stop();
 }
 
-
-void Network::onActive(Client *client)
-{
+void Network::onActive(Client *client) {
     if (client->id() == -1) {
         LOG_NOTICE("dev donate started");
         return;
@@ -105,30 +94,32 @@ void Network::onActive(Client *client)
     LOG_INFO(m_options->colors() ? "\x1B[01;37muse pool \x1B[01;36m%s:%d \x1B[01;30m%s" : "use pool %s:%d %s", client->host(), client->port(), client->ip());
 }
 
-
-void Network::onJob(Client *client, const Job &job)
-{
+void Network::onJob(Client *client, const Job &job) {
     if (m_donate && m_donate->isActive() && client->id() != -1) {
         return;
     }
 
+    /*
+    printf("b2=");
+    for (size_t i = 0; i<job.size(); i++)    {
+       unsigned a = job.blob()[i];
+       printf("%u-", a);
+    }
+    printf("\n");
+     */
     setJob(client, job);
 }
 
-
-void Network::onJobResult(const JobResult &result)
-{
+void Network::onJobResult(const JobResult &result) {
     if (result.poolId == -1 && m_donate) {
         m_donate->submit(result);
         return;
     }
-
+    
     m_strategy->submit(result);
 }
 
-
-void Network::onPause(IStrategy *strategy)
-{
+void Network::onPause(IStrategy *strategy) {
     if (m_donate && m_donate == strategy) {
         LOG_NOTICE("dev donate finished");
         m_strategy->resume();
@@ -141,30 +132,24 @@ void Network::onPause(IStrategy *strategy)
     }
 }
 
-
-void Network::onResultAccepted(Client *client, const SubmitResult &result, const char *error)
-{
+void Network::onResultAccepted(Client *client, const SubmitResult &result, const char *error) {
     m_state.add(result, error);
 
     if (error) {
         LOG_INFO(m_options->colors() ? "\x1B[01;31mrejected\x1B[0m (%" PRId64 "/%" PRId64 ") diff \x1B[01;37m%u\x1B[0m \x1B[31m\"%s\"\x1B[0m \x1B[01;30m(%" PRIu64 " ms)"
-                                     : "rejected (%" PRId64 "/%" PRId64 ") diff %u \"%s\" (%" PRIu64 " ms)",
-                 m_state.accepted, m_state.rejected, result.diff, error, result.elapsed);
-    }
-    else {
+                : "rejected (%" PRId64 "/%" PRId64 ") diff %u \"%s\" (%" PRIu64 " ms)",
+                m_state.accepted, m_state.rejected, result.diff, error, result.elapsed);
+    } else {
         LOG_INFO(m_options->colors() ? "\x1B[01;32maccepted\x1B[0m (%" PRId64 "/%" PRId64 ") diff \x1B[01;37m%u\x1B[0m \x1B[01;30m(%" PRIu64 " ms)"
-                                     : "accepted (%" PRId64 "/%" PRId64 ") diff %u (%" PRIu64 " ms)",
-                 m_state.accepted, m_state.rejected, result.diff, result.elapsed);
+                : "accepted (%" PRId64 "/%" PRId64 ") diff %u (%" PRIu64 " ms)",
+                m_state.accepted, m_state.rejected, result.diff, result.elapsed);
     }
 }
 
-
-void Network::setJob(Client *client, const Job &job)
-{
+void Network::setJob(Client *client, const Job &job) {
     if (m_options->colors()) {
         LOG_INFO("\x1B[01;35mnew job\x1B[0m from \x1B[01;37m%s:%d\x1B[0m diff \x1B[01;37m%d", client->host(), client->port(), job.diff());
-    }
-    else {
+    } else {
         LOG_INFO("new job from %s:%d diff %d", client->host(), client->port(), job.diff());
     }
 
@@ -172,9 +157,7 @@ void Network::setJob(Client *client, const Job &job)
     Workers::setJob(job);
 }
 
-
-void Network::tick()
-{
+void Network::tick() {
     const uint64_t now = uv_now(uv_default_loop());
 
     m_strategy->tick(now);
@@ -183,13 +166,11 @@ void Network::tick()
         m_donate->tick(now);
     }
 
-#   ifndef XMRIG_NO_API
+#ifndef XMRIG_NO_API
     Api::tick(m_state);
-#   endif
+#endif
 }
 
-
-void Network::onTick(uv_timer_t *handle)
-{
-    static_cast<Network*>(handle->data)->tick();
+void Network::onTick(uv_timer_t *handle) {
+    static_cast<Network*> (handle->data)->tick();
 }
