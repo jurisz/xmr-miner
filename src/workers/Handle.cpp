@@ -25,12 +25,13 @@
 #include "workers/Handle.h"
 
 
-Handle::Handle(int threadId, int threads, int64_t affinity, int priority) :
+Handle::Handle(int threadId, int threads, int64_t affinity, int priority, uint32_t startNonce) :
     m_priority(priority),
     m_threadId(threadId),
     m_threads(threads),
     m_affinity(affinity),
-    m_worker(nullptr)
+    m_worker(nullptr),
+    m_startNonce(startNonce)    
 {
 }
 

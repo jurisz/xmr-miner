@@ -166,7 +166,7 @@ int64_t Client::submit(const JobResult &result)
     data[64] = '\0';
 #   endif
 
-    LOG_INFO("sending job result nonce: %s result:%s diff: %u acctualDiff: %u nonceInt: %u", nonce, data, result.diff, result.actualDiff(), result.nonce);
+    LOG_INFO("sending job result nonce: %s result: %s diff: %u actualDiff: %u nonceInt: %u", nonce, data, result.diff, result.actualDiff(), result.nonce);
     
     const size_t size = snprintf(m_sendBuf, sizeof(m_sendBuf), "{\"id\":%" PRIu64 ",\"jsonrpc\":\"2.0\",\"method\":\"submit\",\"params\":{\"id\":\"%s\",\"job_id\":\"%s\",\"nonce\":\"%s\",\"result\":\"%s\"}}\n",
                                  m_sequence, m_rpcId, result.jobId.data(), nonce, data);

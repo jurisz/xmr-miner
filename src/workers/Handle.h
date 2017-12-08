@@ -35,7 +35,7 @@ class IWorker;
 class Handle
 {
 public:
-    Handle(int threadId, int threads, int64_t affinity, int priority);
+    Handle(int threadId, int threads, int64_t affinity, int priority, uint32_t startNonce);
     void join();
     void start(void (*callback) (void *));
 
@@ -45,6 +45,7 @@ public:
     inline int64_t affinity() const        { return m_affinity; }
     inline IWorker *worker() const         { return m_worker; }
     inline void setWorker(IWorker *worker) { m_worker = worker; }
+    inline uint32_t startNonce() const             { return m_startNonce; }
 
 private:
     int m_priority;
@@ -53,6 +54,7 @@ private:
     int64_t m_affinity;
     IWorker *m_worker;
     uv_thread_t m_thread;
+    uint32_t m_startNonce;
 };
 
 

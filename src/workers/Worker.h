@@ -55,6 +55,7 @@ protected:
     std::atomic<uint64_t> m_timestamp;
     uint64_t m_count;
     uint64_t m_sequence;
+    uint32_t m_loaded_nonce;
 };
 
 

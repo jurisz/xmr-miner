@@ -21,9 +21,6 @@
  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cmath>
-
-
 #include "api/Api.h"
 #include "interfaces/IJobResultListener.h"
 #include "Mem.h"
@@ -34,6 +31,8 @@
 #include "workers/SingleWorker.h"
 #include "workers/Workers.h"
 
+#include <iostream>
+#include <fstream>
 
 bool Workers::m_active = false;
 bool Workers::m_enabled = true;
@@ -50,9 +49,7 @@ uv_mutex_t Workers::m_mutex;
 uv_rwlock_t Workers::m_rwlock;
 uv_timer_t Workers::m_timer;
 
-
-Job Workers::job()
-{
+Job Workers::job() {
     uv_rwlock_rdlock(&m_rwlock);
     Job job = m_job;
     uv_rwlock_rdunlock(&m_rwlock);
@@ -60,15 +57,11 @@ Job Workers::job()
     return job;
 }
 
-
-void Workers::printHashrate(bool detail)
-{
+void Workers::printHashrate(bool detail) {
     m_hashrate->print();
 }
 
-
-void Workers::setEnabled(bool enabled)
-{
+void Workers::setEnabled(bool enabled) {
     if (m_enabled == enabled) {
         return;
     }
@@ -82,9 +75,7 @@ void Workers::setEnabled(bool enabled)
     m_sequence++;
 }
 
-
-void Workers::setJob(const Job &job)
-{
+void Workers::setJob(const Job &job) {
     uv_rwlock_wrlock(&m_rwlock);
     m_job = job;
     uv_rwlock_wrunlock(&m_rwlock);
@@ -98,9 +89,7 @@ void Workers::setJob(const Job &job)
     m_paused = 0;
 }
 
-
-void Workers::start(int64_t affinity, int priority)
-{
+void Workers::start(int64_t affinity, int priority) {
     const int threads = Mem::threads();
     m_hashrate = new Hashrate(threads);
 
@@ -108,27 +97,34 @@ void Workers::start(int64_t affinity, int priority)
     uv_rwlock_init(&m_rwlock);
 
     m_sequence = 1;
-    m_paused   = 1;
+    m_paused = 1;
+
+    std::vector<uint32_t> startNonces;
+    startNonces.reserve(8);
+    Workers::loadStartingNonces(startNonces);
+    if (startNonces.size() != static_cast<unsigned int> (threads)) {
+        for (int i = 0; i < threads; ++i) {
+            startNonces[i] = 0;
+        }
+    }
 
     uv_async_init(uv_default_loop(), &m_async, Workers::onResult);
     uv_timer_init(uv_default_loop(), &m_timer);
     uv_timer_start(&m_timer, Workers::onTick, 500, 500);
 
     for (int i = 0; i < threads; ++i) {
-        Handle *handle = new Handle(i, threads, affinity, priority);
+        Handle *handle = new Handle(i, threads, affinity, priority, startNonces[i]);
         m_workers.push_back(handle);
         handle->start(Workers::onReady);
     }
 }
 
-
-void Workers::stop()
-{
+void Workers::stop() {
     uv_timer_stop(&m_timer);
     m_hashrate->stop();
 
-    uv_close(reinterpret_cast<uv_handle_t*>(&m_async), nullptr);
-    m_paused   = 0;
+    uv_close(reinterpret_cast<uv_handle_t*> (&m_async), nullptr);
+    m_paused = 0;
     m_sequence = 0;
 
     for (size_t i = 0; i < m_workers.size(); ++i) {
@@ -136,9 +132,7 @@ void Workers::stop()
     }
 }
 
-
-void Workers::submit(const JobResult &result)
-{
+void Workers::submit(const JobResult &result) {
     uv_mutex_lock(&m_mutex);
     m_queue.push_back(result);
     uv_mutex_unlock(&m_mutex);
@@ -146,23 +140,18 @@ void Workers::submit(const JobResult &result)
     uv_async_send(&m_async);
 }
 
-
-void Workers::onReady(void *arg)
-{
-    auto handle = static_cast<Handle*>(arg);
+void Workers::onReady(void *arg) {
+    auto handle = static_cast<Handle*> (arg);
     if (Mem::isDoubleHash()) {
         handle->setWorker(new DoubleWorker(handle));
-    }
-    else {
+    } else {
         handle->setWorker(new SingleWorker(handle));
     }
 
     handle->worker()->start();
 }
 
-
-void Workers::onResult(uv_async_t *handle)
-{
+void Workers::onResult(uv_async_t *handle) {
     std::list<JobResult> results;
 
     uv_mutex_lock(&m_mutex);
@@ -179,9 +168,7 @@ void Workers::onResult(uv_async_t *handle)
     results.clear();
 }
 
-
-void Workers::onTick(uv_timer_t *handle)
-{
+void Workers::onTick(uv_timer_t *handle) {
     for (Handle *handle : m_workers) {
         if (!handle->worker()) {
             return;
@@ -190,11 +177,20 @@ void Workers::onTick(uv_timer_t *handle)
         m_hashrate->add(handle->threadId(), handle->worker()->hashCount(), handle->worker()->timestamp());
     }
 
-    if ((m_ticks++ & 0xF) == 0)  {
+    if ((m_ticks++ & 0xF) == 0) {
         m_hashrate->updateHighest();
     }
 
-#   ifndef XMRIG_NO_API
+#ifndef XMRIG_NO_API
     Api::tick(m_hashrate);
-#   endif
+#endif
+}
+
+void Workers::loadStartingNonces(std::vector<uint32_t> &startNonces) {
+    std::ifstream file ("start-nonce.data");
+    if (file.is_open()) {
+        for (std::string line; std::getline(file, line, ','); ) {
+            startNonces.push_back(atoi(line.c_str()));
+        }
+    }
 }

@@ -28,6 +28,7 @@
 #include "crypto/CryptoNight.h"
 #include "workers/SingleWorker.h"
 #include "workers/Workers.h"
+#include "log/Log.h"
 
 SingleWorker::SingleWorker(Handle *handle)
 : Worker(handle) {
@@ -91,13 +92,29 @@ void SingleWorker::consumeJob() {
     }
 
     m_job = std::move(job);
+    uint32_t pervNonce = m_result.nonce;
     m_result = m_job;
 
     if (m_job.isNicehash()) {
         m_result.nonce = (*m_job.nonce() & 0xff000000U) + (0xffffffU / m_threads * m_id);
     } else {
         //m_result.nonce = 0xffffffffU / m_threads * m_id;
-        m_result.nonce = 0xffffffffU / m_threads * m_id + 0xf000U;
+        //m_result.nonce = 0xffffffffU / m_threads  * m_id + 0xf000U;
+
+        if (pervNonce == 0) {
+            if (m_loaded_nonce > 0) {
+                m_result.nonce = m_loaded_nonce;
+            } else {
+                //a bit more even strategy
+                m_result.nonce = 0xffffffffU / m_threads * m_id + 0xf000U;
+            }
+            LOG_INFO("starting new nonce: %u", m_result.nonce);
+        }
+
+        if (pervNonce > (0xffffffffU / m_threads * (m_id + 1) - 0xffffU)) {
+            m_result.nonce = 0xffffffffU / m_threads * m_id + 0xf000U;
+            LOG_INFO("starting over with nonce: %u", m_result.nonce);
+        }
     }
 }
 
