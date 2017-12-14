@@ -36,6 +36,7 @@ public:
     virtual uint64_t hashCount() const = 0;
     virtual uint64_t timestamp() const = 0;
     virtual void start()               = 0;
+    virtual uint32_t currentNonce() const = 0;
 };
 
 

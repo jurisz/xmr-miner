@@ -38,7 +38,8 @@ Worker::Worker(Handle *handle) :
     m_timestamp(0),
     m_count(0),
     m_sequence(0),
-    m_loaded_nonce(handle->startNonce())    
+    m_loaded_nonce(handle->startNonce()),
+    m_current_nonce(0)
 {
     if (Cpu::threads() > 1 && handle->affinity() != -1L) {
         Cpu::setAffinity(m_id, handle->affinity());

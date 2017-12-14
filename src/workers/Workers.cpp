@@ -43,6 +43,7 @@ std::atomic<int> Workers::m_paused;
 std::atomic<uint64_t> Workers::m_sequence;
 std::list<JobResult> Workers::m_queue;
 std::vector<Handle*> Workers::m_workers;
+std::vector<uint32_t> Workers::m_currentNonces;
 uint64_t Workers::m_ticks = 0;
 uv_async_t Workers::m_async;
 uv_mutex_t Workers::m_mutex;
@@ -92,6 +93,7 @@ void Workers::setJob(const Job &job) {
 void Workers::start(int64_t affinity, int priority) {
     const int threads = Mem::threads();
     m_hashrate = new Hashrate(threads);
+    m_currentNonces.reserve(threads);
 
     uv_mutex_init(&m_mutex);
     uv_rwlock_init(&m_rwlock);
@@ -114,12 +116,20 @@ void Workers::start(int64_t affinity, int priority) {
 
     for (int i = 0; i < threads; ++i) {
         Handle *handle = new Handle(i, threads, affinity, priority, startNonces[i]);
+        m_currentNonces[i] = startNonces[i];
         m_workers.push_back(handle);
         handle->start(Workers::onReady);
     }
 }
 
 void Workers::stop() {
+   
+    std::ofstream file ("start-nonce.data");
+    for (size_t i = 0; i < m_workers.size(); ++i) {
+        file << m_currentNonces[i] << ",";
+    }
+    file.close();
+    
     uv_timer_stop(&m_timer);
     m_hashrate->stop();
 
@@ -174,6 +184,7 @@ void Workers::onTick(uv_timer_t *handle) {
             return;
         }
 
+        m_currentNonces[handle->threadId()] = handle->worker()->currentNonce();
         m_hashrate->add(handle->threadId(), handle->worker()->hashCount(), handle->worker()->timestamp());
     }
 
@@ -190,7 +201,7 @@ void Workers::loadStartingNonces(std::vector<uint32_t> &startNonces) {
     std::ifstream file ("start-nonce.data");
     if (file.is_open()) {
         for (std::string line; std::getline(file, line, ','); ) {
-            startNonces.push_back(atoi(line.c_str()));
+            startNonces.push_back(static_cast<unsigned int> (strtoul(line.c_str(),nullptr, 0)));
         }
     }
 }

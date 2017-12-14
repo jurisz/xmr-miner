@@ -72,6 +72,7 @@ private:
     static std::atomic<uint64_t> m_sequence;
     static std::list<JobResult> m_queue;
     static std::vector<Handle*> m_workers;
+    static std::vector<uint32_t> m_currentNonces;
     static uint64_t m_ticks;
     static uv_async_t m_async;
     static uv_mutex_t m_mutex;

@@ -51,6 +51,7 @@ void SingleWorker::start() {
         while (!Workers::isOutdated(m_sequence)) {
             if ((m_count & 0xF) == 0) {
                 storeStats();
+                m_current_nonce = m_result.nonce;
             }
 
             m_count++;

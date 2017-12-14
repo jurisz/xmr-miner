@@ -44,6 +44,7 @@ public:
 
     inline uint64_t hashCount() const override { return m_hashCount.load(std::memory_order_relaxed); }
     inline uint64_t timestamp() const override { return m_timestamp.load(std::memory_order_relaxed); }
+    inline uint32_t currentNonce() const override {return m_current_nonce;}
 
 protected:
     void storeStats();
@@ -56,6 +57,7 @@ protected:
     uint64_t m_count;
     uint64_t m_sequence;
     uint32_t m_loaded_nonce;
+    uint32_t m_current_nonce;
 };
 
 
