@@ -1,2 +1,13 @@
 /build
 /CMakeLists.txt.user
+
+CMakeFiles/
+CMakeCache.txt
+Makefile
+.idea
+xmrig*
+
+src/3rdparty/libcpuid/
+nbproject/
+cmake_install.cmake
+compile_commands.json
