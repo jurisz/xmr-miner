@@ -1,11 +1,11 @@
 /build
 /CMakeLists.txt.user
+/xmrig*
 
 CMakeFiles/
 CMakeCache.txt
 Makefile
 .idea
-xmrig*
 
 src/3rdparty/libcpuid/
 nbproject/
